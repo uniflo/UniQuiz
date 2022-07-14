@@ -4,9 +4,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.Windows.Speech;
 
-public class GameScreen : MonoBehaviour
-{
+public class GameScreen : MonoBehaviour { 
 
     public Button answer1Button;
     public TMPro.TextMeshProUGUI answer1ButtonText;
@@ -17,21 +17,81 @@ public class GameScreen : MonoBehaviour
     public Button answer4Button;
     public TMPro.TextMeshProUGUI answer4ButtonText;
     public TMPro.TextMeshProUGUI question;
+    public Button selection;
 
+    private string[] keywords = { "Kreis", "Dreieck", "Viereck", "Stern", "Klick" };
+
+    private KeywordRecognizer recognizer;
 
     private List<Question> questions;
     private int currentQuestionIndex = 0;
     private int correctAnswers = 0;
+    private int? selectedAnswerIndex;
 
     // Start is called before the first frame update
     void Start()
     {
         SharedPrefs.correctAnswers = 0;
+
+        recognizer = new KeywordRecognizer(keywords);
+        recognizer.OnPhraseRecognized += onPhraseRecognized;
+        recognizer.Start();
+
         questions = generateQuestions();
         showNextQuestion();
+
+    }
+
+    void hideSelection()
+    {
+        selectedAnswerIndex = null;
+        selection.gameObject.SetActive(false);
+    }
+
+    void showSelection()
+    {
+        selection.gameObject.SetActive(true);
+    }
+
+    private void onPhraseRecognized(PhraseRecognizedEventArgs args) {
+        Debug.Log($"recognized: {args.text} with confidence: {args.confidence}");
+
+        switch (args.text)
+        {
+            case "Kreis":
+                selection.GetComponent<RectTransform>().anchoredPosition3D = new Vector3(-172.9993f, 0.3676f, 0);
+                selectedAnswerIndex = 0;
+                break;
+            case "Dreieck":
+                selection.GetComponent<RectTransform>().anchoredPosition3D = new Vector3(191f, 0.3676f, 0);
+                selectedAnswerIndex = 1;
+                break;
+            case "Viereck":
+                selection.GetComponent<RectTransform>().anchoredPosition3D = new Vector3(-173, -168, 0);
+                selectedAnswerIndex = 2;
+                break;
+            case "Stern":
+                selection.GetComponent<RectTransform>().anchoredPosition3D = new Vector3(187.7f, -168.7f, 0);
+                selectedAnswerIndex = 3;
+                break;
+            case "Klick":
+                onSaidClick();
+                return;
+        }
+        showSelection();
+    }
+
+    void onSaidClick()
+    {
+        if (selectedAnswerIndex == null) return;
+
+        Question q = questions[currentQuestionIndex-1];
+        answerCallback(selectedAnswerIndex == q.resultIndex);
     }
 
     void showNextQuestion() {
+        hideSelection();
+
 
         if (currentQuestionIndex == questions.Count)
         {
